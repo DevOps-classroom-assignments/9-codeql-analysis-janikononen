@@ -21,7 +21,24 @@ func main() {
 func readFileHandler(w http.ResponseWriter, r *http.Request) {
 	filename := r.URL.Query().Get("file")
 
-	data, err := ioutil.ReadFile(filename)
+	// Restrict access to only files within allowedDir
+	absAllowedDir, err := filepath.Abs(allowedDir)
+	if err != nil {
+		http.Error(w, "Server error", 500)
+		return
+	}
+	joinedPath := filepath.Join(allowedDir, filename)
+	absFilePath, err := filepath.Abs(joinedPath)
+	if err != nil {
+		http.Error(w, "Invalid file path", 400)
+		return
+	}
+	// ensure the file is inside the allowed directory
+	if len(absFilePath) < len(absAllowedDir) || absFilePath[:len(absAllowedDir)] != absAllowedDir || (len(absFilePath) > len(absAllowedDir) && absFilePath[len(absAllowedDir)] != filepath.Separator) {
+		http.Error(w, "Access denied", 403)
+		return
+	}
+	data, err := ioutil.ReadFile(absFilePath)
 	if err != nil {
 		http.Error(w, "File not found", 404)
 		return
